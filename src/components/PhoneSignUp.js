@@ -31,13 +31,37 @@ const PhoneSignUp = () => {
     }
   };
 
+  const verifyToken = async (idToken) => {
+    try {
+      const response = await axios.post(
+        'http://localhost:8000/api/verify-firebase-token/',
+        {},
+        {
+          headers: {
+            Authorization: `token ${idToken}`
+          }
+        }
+      );
+      console.log(response.data);
+    } catch (error) {
+      console.error('Error verifying token:', error);
+    }
+  };
+
   const verifyOtp = async (e) => {
     e.preventDefault();
     setError("");
     if (otp === "" || otp === null) return;
     try {
-      await result.confirm(otp);
-      navigate("/home");
+      const confirmationResult = await result.confirm(otp);
+      const idToken = await confirmationResult.user.getIdToken();
+      // Verify the token
+      const status = await verifyToken(idToken);
+      if (status === 200 || status === 201) {
+        navigate("/home");
+      } else {
+        setError("Token verification failed");
+      }
     } catch (err) {
       setError(err.message);
       console.log(err);
