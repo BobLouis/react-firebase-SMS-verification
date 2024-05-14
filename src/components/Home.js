@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Button } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import { useUserAuth } from "../context/UserAuthContext";
 
 const Home = () => {
   const { logOut, user } = useUserAuth();
+
   const navigate = useNavigate();
   const handleLogout = async () => {
     try {
@@ -14,6 +15,11 @@ const Home = () => {
       console.log(error.message);
     }
   };
+
+  useEffect(() => {
+
+    console.log("user",user);
+  }, [user]);
   return (
     <>
       <div className="p-4 box mt-3 text-center">

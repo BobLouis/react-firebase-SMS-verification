@@ -26,6 +26,7 @@ const PhoneSignUp = () => {
       setResult(response);
       setFlag(true);
     } catch (err) {
+      console.log(err);
       setError(err.message);
     }
   };
@@ -39,6 +40,7 @@ const PhoneSignUp = () => {
       navigate("/home");
     } catch (err) {
       setError(err.message);
+      console.log(err);
     }
   };
 
@@ -50,7 +52,7 @@ const PhoneSignUp = () => {
         <Form onSubmit={getOtp} style={{ display: !flag ? "block" : "none" }}>
           <Form.Group className="mb-3" controlId="formBasicEmail">
             <PhoneInput
-              defaultCountry="IN"
+              defaultCountry="TW"
               value={number}
               onChange={setNumber}
               placeholder="Enter Phone Number"

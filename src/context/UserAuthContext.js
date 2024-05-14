@@ -30,10 +30,25 @@ export function UserAuthContextProvider({ children }) {
     return signInWithPopup(auth, googleAuthProvider);
   }
 
+  // function setUpRecaptha(number) {
+  //   const recaptchaVerifier = new RecaptchaVerifier(
+  //     "recaptcha-container",
+  //     {},
+  //     auth
+  //   );
+  //   recaptchaVerifier.render();
+  //   return signInWithPhoneNumber(auth, number, recaptchaVerifier);
+  // }
+
   function setUpRecaptha(number) {
     const recaptchaVerifier = new RecaptchaVerifier(
       "recaptcha-container",
-      {},
+      {
+        size: 'invisible',
+        callback: (response) => {
+          // reCAPTCHA solved, allow signInWithPhoneNumber.
+        }
+      },
       auth
     );
     recaptchaVerifier.render();
