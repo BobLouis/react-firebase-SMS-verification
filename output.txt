@@ -1,0 +1,514 @@
+Directory: src
+Subdirectory: src/context
+Subdirectory: src/components
+File: src/App.css
+Contents:
+a {
+  text-decoration: none;
+}
+
+body {
+  background-color: #fafafa;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  width: 100%;
+  align-items: center;
+  height: 100vh;
+}
+
+.box {
+  border: 1px solid #dfdfdf;
+  background-color: #fff;
+}
+
+.g-btn {
+  width: 100% !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  font-size: 15px !important;
+}
+.g-btn > div,
+.g-btn > div > svg {
+  width: 40px !important;
+  height: 38px !important;
+}
+.button-right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+#recaptcha-container {
+  margin: 20px;
+}
+
+File: src/index.js
+Contents:
+import React from "react";
+import ReactDOM from "react-dom";
+import { BrowserRouter as Router } from "react-router-dom";
+import "bootstrap/dist/css/bootstrap.min.css";
+import App from "./App";
+
+ReactDOM.render(
+  <React.StrictMode>
+    <Router>
+      <App />
+    </Router>
+  </React.StrictMode>,
+  document.getElementById("root")
+);
+
+File: src/firebase.js
+Contents:
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+
+const firebaseConfig = {
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export default app;
+
+File: src/App.js
+Contents:
+import { Container, Row, Col } from "react-bootstrap";
+import { Routes, Route } from "react-router-dom";
+import "./App.css";
+import Home from "./components/Home";
+import Login from "./components/Login";
+import Signup from "./components/Signup";
+import PhoneSignUp from "./components/PhoneSignUp";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { UserAuthContextProvider } from "./context/UserAuthContext";
+
+function App() {
+  return (
+    <Container style={{ width: "400px" }}>
+      <Row>
+        <Col>
+          <UserAuthContextProvider>
+            <Routes>
+              <Route
+                path="/home"
+                element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/phonesignup" element={<PhoneSignUp />} />
+            </Routes>
+          </UserAuthContextProvider>
+        </Col>
+      </Row>
+    </Container>
+  );
+}
+
+export default App;
+
+File: src/context/UserAuthContext.js
+Contents:
+import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+  RecaptchaVerifier,
+  signInWithPhoneNumber,
+} from "firebase/auth";
+import { auth } from "../firebase";
+
+const userAuthContext = createContext();
+
+export function UserAuthContextProvider({ children }) {
+  const [user, setUser] = useState({});
+
+  function logIn(email, password) {
+    return signInWithEmailAndPassword(auth, email, password);
+  }
+  function signUp(email, password) {
+    return createUserWithEmailAndPassword(auth, email, password);
+  }
+  function logOut() {
+    return signOut(auth);
+  }
+  function googleSignIn() {
+    const googleAuthProvider = new GoogleAuthProvider();
+    return signInWithPopup(auth, googleAuthProvider);
+  }
+
+  // function setUpRecaptha(number) {
+  //   const recaptchaVerifier = new RecaptchaVerifier(
+  //     "recaptcha-container",
+  //     {},
+  //     auth
+  //   );
+  //   recaptchaVerifier.render();
+  //   return signInWithPhoneNumber(auth, number, recaptchaVerifier);
+  // }
+
+  function setUpRecaptha(number) {
+    const recaptchaVerifier = new RecaptchaVerifier(
+      "recaptcha-container",
+      {
+        size: 'invisible',
+        callback: (response) => {
+          // reCAPTCHA solved, allow signInWithPhoneNumber.
+        }
+      },
+      auth
+    );
+    recaptchaVerifier.render();
+    return signInWithPhoneNumber(auth, number, recaptchaVerifier);
+  }
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentuser) => {
+      console.log("Auth", currentuser);
+      setUser(currentuser);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  return (
+    <userAuthContext.Provider
+      value={{
+        user,
+        logIn,
+        signUp,
+        logOut,
+        googleSignIn,
+        setUpRecaptha,
+      }}
+    >
+      {children}
+    </userAuthContext.Provider>
+  );
+}
+
+export function useUserAuth() {
+  return useContext(userAuthContext);
+}
+
+File: src/components/Home.js
+Contents:
+import React, { useEffect } from "react";
+import { Button } from "react-bootstrap";
+import { useNavigate } from "react-router";
+import { useUserAuth } from "../context/UserAuthContext";
+
+const Home = () => {
+  const { logOut, user } = useUserAuth();
+
+  const navigate = useNavigate();
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      navigate("/");
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  useEffect(() => {
+
+    console.log("user",user);
+  }, [user]);
+  return (
+    <>
+      <div className="p-4 box mt-3 text-center">
+        Hello Welcome <br />
+        {user && user.email}
+      </div>
+      <div className="d-grid gap-2">
+        <Button variant="primary" onClick={handleLogout}>
+          Log out
+        </Button>
+      </div>
+    </>
+  );
+};
+
+export default Home;
+
+File: src/components/Signup.js
+Contents:
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Form, Alert } from "react-bootstrap";
+import { Button } from "react-bootstrap";
+import { useUserAuth } from "../context/UserAuthContext";
+
+const Signup = () => {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [password, setPassword] = useState("");
+  const { signUp } = useUserAuth();
+  let navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      await signUp(email, password);
+      navigate("/");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <>
+      <div className="p-4 box">
+        <h2 className="mb-3">Firebase Auth Signup</h2>
+        {error && <Alert variant="danger">{error}</Alert>}
+        <Form onSubmit={handleSubmit}>
+          <Form.Group className="mb-3" controlId="formBasicEmail">
+            <Form.Control
+              type="email"
+              placeholder="Email address"
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3" controlId="formBasicPassword">
+            <Form.Control
+              type="password"
+              placeholder="Password"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Form.Group>
+
+          <div className="d-grid gap-2">
+            <Button variant="primary" type="Submit">
+              Sign up
+            </Button>
+          </div>
+        </Form>
+      </div>
+      <div className="p-4 box mt-3 text-center">
+        Already have an account? <Link to="/">Log In</Link>
+      </div>
+    </>
+  );
+};
+
+export default Signup;
+
+File: src/components/Login.js
+Contents:
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Form, Alert } from "react-bootstrap";
+import { Button } from "react-bootstrap";
+import GoogleButton from "react-google-button";
+import { useUserAuth } from "../context/UserAuthContext";
+
+const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const { logIn, googleSignIn } = useUserAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      await logIn(email, password);
+      navigate("/home");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleGoogleSignIn = async (e) => {
+    e.preventDefault();
+    try {
+      await googleSignIn();
+      navigate("/home");
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  return (
+    <>
+      <div className="p-4 box">
+        <h2 className="mb-3">Firebase Auth Login</h2>
+        {error && <Alert variant="danger">{error}</Alert>}
+        <Form onSubmit={handleSubmit}>
+          <Form.Group className="mb-3" controlId="formBasicEmail">
+            <Form.Control
+              type="email"
+              placeholder="Email address"
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3" controlId="formBasicPassword">
+            <Form.Control
+              type="password"
+              placeholder="Password"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Form.Group>
+
+          <div className="d-grid gap-2">
+            <Button variant="primary" type="Submit">
+              Log In
+            </Button>
+          </div>
+        </Form>
+        <hr />
+        <div>
+          <GoogleButton
+            className="g-btn"
+            type="dark"
+            onClick={handleGoogleSignIn}
+          />
+        </div>
+        <Link to="/phonesignup">
+          <div className="d-grid gap-2 mt-3">
+            <Button variant="success" type="Submit">
+              Sign in with Phone
+            </Button>
+          </div>
+        </Link>
+      </div>
+      <div className="p-4 box mt-3 text-center">
+        Don't have an account? <Link to="/signup">Sign up</Link>
+      </div>
+    </>
+  );
+};
+
+export default Login;
+
+File: src/components/ProtectedRoute.js
+Contents:
+import React from "react";
+import { Navigate } from "react-router-dom";
+import { useUserAuth } from "../context/UserAuthContext";
+const ProtectedRoute = ({ children }) => {
+  const { user } = useUserAuth();
+  if (!user) {
+    return <Navigate to="/" />;
+  }
+  return children;
+};
+
+export default ProtectedRoute;
+
+File: src/components/PhoneSignUp.js
+Contents:
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Form, Alert } from "react-bootstrap";
+import { Button } from "react-bootstrap";
+import "react-phone-number-input/style.css";
+import PhoneInput from "react-phone-number-input";
+import { useUserAuth } from "../context/UserAuthContext";
+
+const PhoneSignUp = () => {
+  const [error, setError] = useState("");
+  const [number, setNumber] = useState("");
+  const [flag, setFlag] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [result, setResult] = useState("");
+  const { setUpRecaptha } = useUserAuth();
+  const navigate = useNavigate();
+
+  const getOtp = async (e) => {
+    e.preventDefault();
+    console.log(number);
+    setError("");
+    if (number === "" || number === undefined)
+      return setError("Please enter a valid phone number!");
+    try {
+      const response = await setUpRecaptha(number);
+      setResult(response);
+      setFlag(true);
+    } catch (err) {
+      console.log(err);
+      setError(err.message);
+    }
+  };
+
+  const verifyOtp = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (otp === "" || otp === null) return;
+    try {
+      await result.confirm(otp);
+      navigate("/home");
+    } catch (err) {
+      setError(err.message);
+      console.log(err);
+    }
+  };
+
+  return (
+    <>
+      <div className="p-4 box">
+        <h2 className="mb-3">Firebase Phone Auth</h2>
+        {error && <Alert variant="danger">{error}</Alert>}
+        <Form onSubmit={getOtp} style={{ display: !flag ? "block" : "none" }}>
+          <Form.Group className="mb-3" controlId="formBasicEmail">
+            <PhoneInput
+              defaultCountry="TW"
+              value={number}
+              onChange={setNumber}
+              placeholder="Enter Phone Number"
+            />
+            <div id="recaptcha-container"></div>
+          </Form.Group>
+          <div className="button-right">
+            <Link to="/">
+              <Button variant="secondary">Cancel</Button>
+            </Link>
+            &nbsp;
+            <Button type="submit" variant="primary">
+              Send Otp
+            </Button>
+          </div>
+        </Form>
+
+        <Form onSubmit={verifyOtp} style={{ display: flag ? "block" : "none" }}>
+          <Form.Group className="mb-3" controlId="formBasicOtp">
+            <Form.Control
+              type="otp"
+              placeholder="Enter OTP"
+              onChange={(e) => setOtp(e.target.value)}
+            />
+          </Form.Group>
+          <div className="button-right">
+            <Link to="/">
+              <Button variant="secondary">Cancel</Button>
+            </Link>
+            &nbsp;
+            <Button type="submit" variant="primary">
+              Verify
+            </Button>
+          </div>
+        </Form>
+      </div>
+    </>
+  );
+};
+
+export default PhoneSignUp;
+
+
