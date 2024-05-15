@@ -5,6 +5,8 @@ import { Button } from "react-bootstrap";
 import "react-phone-number-input/style.css";
 import PhoneInput from "react-phone-number-input";
 import { useUserAuth } from "../context/UserAuthContext";
+import axios from 'axios';
+
 
 const PhoneSignUp = () => {
   const [error, setError] = useState("");
@@ -33,18 +35,16 @@ const PhoneSignUp = () => {
 
   const verifyToken = async (idToken) => {
     try {
+      console.log("idToken", idToken);
       const response = await axios.post(
-        'http://localhost:8000/api/verify-firebase-token/',
-        {},
-        {
-          headers: {
-            Authorization: `token ${idToken}`
-          }
-        }
+        'http://localhost:8000/user/verify-firebase-token/',
+        {"token": idToken},
       );
       console.log(response.data);
+      return response.status
     } catch (error) {
       console.error('Error verifying token:', error);
+      return error.response.status;
     }
   };
 
